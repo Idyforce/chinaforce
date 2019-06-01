@@ -1,1 +1,186 @@
-
+/*
+  @Author : Alex
+  @Date : 2017-8-28 
+  @Function : AddEventPage的后台控制类
+*/
+public class AddEventController {
+  public List<InnerListing> list_innerHouse {set; get;}
+  public Listing_Information__c houseTemp {set; get;}
+  public Event ev {set; get;}
+  public String hostId {set; get;}
+  public Id ownerIdt {set; get;}
+  public String messages{get;set;}
+  public AddEventController(){
+     messages='';
+     list_innerHouse = new List<InnerListing>();
+     houseTemp = new Listing_Information__c();
+     ev = new Event();
+     init();
+  }
+  //刷新方法
+  public void refurbish(){
+     list_innerHouse.clear();
+     show(hostId);
+  }
+  public void init(){
+    // String houseId = apexpages.currentPage().getParameters().get('houseId');
+    hostId = apexpages.currentPage().getParameters().get('hostId');
+    ownerIdt = apexpages.currentPage().getParameters().get('ownerId');
+    System.debug('hostId------>'+hostId);
+    ev.OwnerId = ownerIdt;
+    ev.StartDateTime = System.now();
+    ev.EndDateTime = System.now().addMinutes(5);
+    // Follow Time显示为第二天
+    houseTemp.Follow_Time__c=System.now().addDays(1);
+    // ev.Meaningful_Calls__c = true;
+    if(hostId != null&&hostId !=''){
+       show(hostId);
+    }
+  }
+  //展示出该客户下的房屋信息
+  public void show(String hostId)
+  {
+    User currentuser = [Select Id,Profile.Name,UserRole.Name From User Where Id =: UserInfo.getUserId()];
+    Boolean IsRole=false;
+    if (currentuser.UserRole.Name == 'In-home Inspection Agent') 
+    {
+      IsRole=true;
+    }
+    List<Listing_Information__c> list_house =new  List<Listing_Information__c>();
+    if (IsRole) 
+    {
+      list_house = [SELECT Id,
+                  Name,
+                  LinkUrl__c,
+                  first_name__c,
+                  host_phone_number__c,
+                  last_name__c,
+                  Host__r.Name,
+                  End_Result__c,
+                  Call_status__c,
+                  Follow_Time__c,
+                  Status__c,
+                  id_user__c,
+                  of_Call_Attempts__c,
+                  Review_Result__c,
+                  OwnerId,
+                  host_email__c,
+                  Meaningful_Calls__c,
+                  Is_finished__c,
+                  Notes__c
+                  FROM Listing_Information__c
+                  WHERE id_user__c =: hostId
+                  And IsNewProject__c = true
+                  AND OwnerId =: ownerIdt
+                  AND Is_finished__c=false
+                  ]; 
+    }
+    else
+    {
+      list_house = [SELECT Id,
+                  Name,
+                  LinkUrl__c,
+                  first_name__c,
+                  host_phone_number__c,
+                  last_name__c,
+                  Host__r.Name,
+                  End_Result__c,
+                  Call_status__c,
+                  Follow_Time__c,
+                  Status__c,
+                  id_user__c,
+                  of_Call_Attempts__c,
+                  Review_Result__c,
+                  OwnerId,
+                  host_email__c,
+                  Meaningful_Calls__c,
+                  Is_finished__c,
+                  Notes__c
+                  FROM Listing_Information__c
+                  WHERE id_user__c =: hostId  
+                  AND OwnerId =: ownerIdt
+                  And IsNewProject__c = false
+                  AND Is_finished__c=false
+                  ]; 
+    }                                             
+     if(list_house.size() > 0)
+    {
+       for(Listing_Information__c house : list_house){
+         InnerListing temp = new InnerListing();
+         temp.house = house;
+        System.debug('---------'+house.End_Result__c);
+        if (house.End_Result__c=='Super High Quality'||
+          house.End_Result__c=='High Quality'||
+          house.End_Result__c=='Listing Did Not Exist'||
+          house.End_Result__c=='Listing did not Exist when Re-assessing'||
+          house.End_Result__c==null) {
+          temp.isChecked = false;
+        }else{
+          temp.isChecked = true;
+        }
+         list_innerHouse.add(temp);
+       }
+     }
+  }
+   //对打钩的房屋信息新增Event事件
+    public void insertEvent(){
+      List<Event> list_ev = new List<Event>();
+      List<Listing_Information__c> list_house = new List<Listing_Information__c>();
+      for(InnerListing innerHouse : list_innerHouse){    
+        if(innerHouse.isChecked){
+          System.debug('--------------新增');
+          Event evTemp = new Event();
+          evTemp.Subject = ev.Subject;
+          evTemp.StartDateTime = ev.StartDateTime;
+          evTemp.EndDateTime = ev.EndDateTime;
+          evTemp.Description = ev.Description;
+          evTemp.OwnerId = ev.OwnerId;
+          evTemp.Notes__c=ev.Notes__c;
+          System.debug('--->'+ev.Call_status__c);
+          if(ev.Call_status__c == 'No Answer' || ev.Call_status__c== 'Can not Change Now' || ev.Call_status__c== 'Schedule to Call Another Time'){
+            evTemp.Meaningful_Calls__c = false;
+          }else{
+            evTemp.Meaningful_Calls__c = true;
+          }
+          evTemp.Call_status__c = ev.Call_status__c;
+          evTemp.WhoId = ev.WhoId;
+          evTemp.WhatId = innerHouse.house.Id;
+          evTemp.IsReminderSet = ev.IsReminderSet;
+          evTemp.ReminderDateTime = ev.ReminderDateTime;
+          list_ev.add(evTemp);
+          if(houseTemp.Follow_Time__c != null){
+            innerHouse.house.Follow_Time__c = houseTemp.Follow_Time__c;
+            list_house.add(innerHouse.house);
+          }
+        }
+      }
+      if(list_house.size() > 0){
+        update list_house;
+      }
+      System.debug('hostId==='+hostId);
+      hostId = apexpages.currentPage().getParameters().get('hostId');
+      Account acc = new Account();
+      try {
+        acc =[select id,Host_Call__c from Account where  Airbnb_User_id__c=:hostId];
+        if(list_ev.size() > 0){
+          insert list_ev;
+          if(acc.Host_Call__c == null){
+            acc.Host_Call__c = 0;
+          }
+          acc.Host_Call__c++;
+          update acc;
+        }
+        list_innerHouse.clear();
+        show(hostId);
+        messages='success';
+      }
+      catch (Exception e) {
+        e.getCause();
+      }
+      System.debug('acc===='+acc);
+    }
+    public class InnerListing{
+     public Boolean isChecked {set; get;}
+     public Listing_Information__c house {set; get;} 
+  }
+}
