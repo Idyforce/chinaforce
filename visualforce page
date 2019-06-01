@@ -1,1 +1,172 @@
 
+<apex:page id="page" controller="AddEventController" showHeader="false">
+    <apex:includeScript value="{!URLFOR($Resource.Jquery)}"  />
+    <apex:includeScript value="/support/console/40.0/integration.js"/>
+    <apex:slds /> 
+    <script type="text/javascript">
+        function selectAllCheckboxes(obj,receivedInputID){
+            var inputCheckBox = document.getElementsByTagName("input");                  
+            for(var i=0; i<inputCheckBox.length; i++){          
+                if(inputCheckBox[i].id.indexOf(receivedInputID)!=-1){                                     
+                    inputCheckBox[i].checked = obj.checked;
+                }
+            }
+        }
+        function showLoad(){
+            document.getElementById("loading").style.display="";
+        }
+    </script>
+    <apex:form id="form">
+        <div id="loading" style="display:none;position:fixed !important;position:absolute;top:0;left:0;height:100%; width:100%; z-index:1005; background:#fff url({!URLFOR($Resource.Loading)}) no-repeat center center; opacity:0.6; filter:alpha(opacity=60);font-size:14px;line-height:20px;"/>
+        <apex:pageBlock title="Related to Listing" id="pblok">
+            <apex:pageMessages id="showmsg"></apex:pageMessages>
+            <div id="messagesIdDiv" class="messagesIdDiv"><apex:inputHidden id="messagesId" value="{!messages}" /></div>
+            
+
+
+
+ <div style="overflow-x: auto; overflow-y: auto; height: 120px">
+
+            <apex:pageBlockTable align="center" value="{!list_innerHouse}" var="InnerHouse" id="table" title="All Listing">
+               
+                <apex:column >
+                    <apex:facet name="header">
+                        <apex:inputCheckbox onclick="selectAllCheckboxes(this,'inputId')"/>
+                    </apex:facet>
+                    <apex:inputCheckbox value="{!InnerHouse.isChecked}" id="inputId"/>
+                </apex:column>
+                <apex:column headerValue="Reference No">
+                  <apex:outputLink value="#"   onClick="sforce.console.openPrimaryTab(null,'/{!InnerHouse.house.Id}?isdtp=vw',true,'{!InnerHouse.house.Name}');return false"  id="theLink">{!InnerHouse.house.Name}</apex:outputLink>
+                </apex:column>
+                <apex:column headerValue="URL"   value="{!InnerHouse.house.LinkUrl__c}" />
+                <apex:column headerValue="Host email" value="{!InnerHouse.house.host_email__c}">
+                </apex:column>
+                <apex:column headerValue="Host Phone No" value="{!InnerHouse.house.host_phone_number__c}" />
+                <apex:column headerValue="End Result" value="{!InnerHouse.house.End_Result__c}" />
+                <apex:column headerValue="Call Status" value="{!InnerHouse.house.Call_status__c}" />
+                <apex:column headerValue="Status" value="{!InnerHouse.house.Status__c}" />
+                <apex:column headerValue="# of Call Attempts" value="{!InnerHouse.house.of_Call_Attempts__c}" />
+                <apex:column headerValue="Notes" value="{!InnerHouse.house.Notes__c}" />
+                <apex:column headerValue="Submitted" value="{!InnerHouse.house.Is_finished__c}" />
+          
+            </apex:pageBlockTable>
+    
+        </div> 
+
+
+
+
+        </apex:pageBlock>
+        <apex:pageBlock title="New An Event" tabStyle="Listing_Assessment__c">
+            <apex:pageBlockButtons id="block1" location="top" >
+                    <apex:commandButton styleClass="slds-button slds-button--brand slds-m-top--medium" value="Save"   action="{!insertEvent}" onclick="showLoad()" status="saveStatus" rerender="form"/>
+              <apex:commandButton styleClass="slds-button slds-button--brand slds-m-top--medium" value="Refresh"    action="{!refurbish}" />
+            </apex:pageBlockButtons>
+            <apex:actionStatus id="saveStatus">
+                <apex:facet name="start">
+                    <script>refurbish();</script> 
+                </apex:facet>
+            </apex:actionStatus>
+            <apex:pageBlockSection columns="2" title="Calendar Details">
+                <apex:pageBlockSectionItem >
+                    <apex:outputLabel value="Subject"/>
+                    <apex:inputField value="{!ev.Subject}" required="true"/>
+                </apex:pageBlockSectionItem>
+
+                <apex:pageBlockSectionItem >
+                    <apex:outputLabel value="Assigned To"/>
+                    <apex:inputField value="{!ev.OwnerId}" required="true"/>
+                </apex:pageBlockSectionItem>
+
+                <apex:pageBlockSectionItem >
+                    <apex:outputLabel value="Start"/>
+                    <apex:inputField value="{!ev.StartDateTime}" required="true"/>
+                </apex:pageBlockSectionItem>
+
+                <apex:pageBlockSectionItem >
+                    <apex:outputLabel value="Notes"/>
+                    <apex:inputField value="{!ev.Notes__c}"/>
+                </apex:pageBlockSectionItem>
+
+                <apex:pageBlockSectionItem >
+                    <apex:outputLabel value="End"/>
+                    <apex:inputField value="{!ev.EndDateTime}" required="true"/>
+                </apex:pageBlockSectionItem>
+
+                <!-- <apex:pageBlockSectionItem >
+                </apex:pageBlockSectionItem> -->
+                
+                <!-- <apex:pageBlockSectionItem >
+                    <apex:outputLabel value="Meaningful Calls"/>
+                    <apex:inputField value="{!ev.Meaningful_Calls__c}"/>
+                </apex:pageBlockSectionItem> -->
+
+                <!-- <apex:pageBlockSectionItem >
+                </apex:pageBlockSectionItem> -->
+
+                <apex:pageBlockSectionItem >
+                    <apex:outputLabel value="Call status"/>
+                    <apex:inputField value="{!ev.Call_status__c}" required="true"/>
+                </apex:pageBlockSectionItem>
+
+                
+            </apex:pageBlockSection>
+
+            <apex:pageBlockSection columns="1" title="Follow up">
+                <apex:pageBlockSectionItem >
+                    <apex:outputLabel value="Follow Time"/>
+                    <apex:inputField value="{!houseTemp.Follow_Time__c}" required="true"/>
+                </apex:pageBlockSectionItem>
+            </apex:pageBlockSection>
+        </apex:pageBlock>
+
+    </apex:form>
+    <footer role="contentinfo" class="slds-p-around--large">
+      <div class="slds-grid slds-grid--align-spread">
+        <p class="slds-col"></p>
+        <p class="slds-col">&copy; Airbnb</p>
+      </div>
+    </footer>
+    <script type="text/javascript">
+        // function refurbish(){
+        //     var messvar=$(".messagesIdDiv").children().val();
+        //     if (messvar=='success') {
+        //         console.log('-----'+messvar);
+        //        // testGetFocusedPrimaryTabId();
+        //        alert('Success');
+        //        window.location.reload();
+        //     }
+
+        // };
+        function refurbish(){
+
+            var messvar=$(".messagesIdDiv").children().val();
+            if (messvar=='success') {
+                console.log('-----'+messvar);
+                testGetFocusedPrimaryTabId();
+            }
+        };
+
+        
+         function testGetFocusedPrimaryTabId() {
+
+            sforce.console.getFocusedPrimaryTabId(showTabId);
+        };
+        var showTabId = function showTabId(result) {
+           var primaryTabId=result.id;
+           console.log('primaryTabId:'+primaryTabId);
+           sforce.console.refreshPrimaryTabById(primaryTabId, true, refreshSuccess);
+        };
+        var refreshSuccess = function refreshSuccess(result) {
+            //Report whether refreshing the primary tab was successful
+            if (result.success == true) {
+                // alert('Save successfully');
+                
+                window.location.reload();
+            } else {
+                //alert('Save failure');
+            }
+        };
+    </script>
+</apex:page>
+                                        
